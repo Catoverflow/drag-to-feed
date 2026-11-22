@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ModManifest>
+  <ID>drag_to_feed</ID>
+  <Name>Drag to Feed</Name>
+  <Author>catoverflow</Author>
+  <ModVersion>1.0.0</ModVersion>
+  <Description>Drag food onto an animal cage or aquaculture system to put it in the feed dispenser inside. Remember to right click a dispenser to enable Auto Blend.</Description>
+
+  <GameVersions>
+    <Version>1.0.0</Version>
+  </GameVersions>
+
+  <Prerequisites />
+
+  <Assemblies>
+    <Assembly>DragToFeed.dll</Assembly>
+  </Assemblies>
+
+  <!-- Only Harmony patches on the game's own drag and feed dispenser code. -->
+  <Capabilities />
+</ModManifest>
