@@ -41,8 +41,8 @@ namespace DragToFeed
 			return item != null && item.IsTag("CALORIE_VALUE_TAG") && !item.IsTag("ANIMAL_ITEM_TAG") && !AquacultureHelper.IsFish(item);
 		}
 
-		// The storage of the feed dispenser slotted in an animal cage or an aquaculture system.
-		public static GameGridInventory DispenserStorageIn(GameItem machine)
+		// The feed dispenser slotted in an animal cage or an aquaculture system.
+		public static GameItem DispenserIn(GameItem machine)
 		{
 			if (machine == null)
 			{
@@ -58,11 +58,42 @@ namespace DragToFeed
 				slot = MachineRAS.GetDispenserSlot(machine);
 			}
 			GameItem dispenser = slot?.childItem;
-			if (dispenser == null || !dispenser.IsTag("FEED_DISPENSER_TAG"))
+			return (dispenser != null && dispenser.IsTag("FEED_DISPENSER_TAG")) ? dispenser : null;
+		}
+
+		// Blends what is waiting in a dispenser's storage so the next food fits, the way the
+		// dispenser itself would. True when that freed anything.
+		//
+		// The game blends only at the moment something is added. Food that arrived while the
+		// dispenser was at its calorie limit therefore stays in the storage, and once it fills
+		// the storage nothing can be added to set off a blend again, even after the animals have
+		// eaten the limit down.
+		public static bool MakeRoom(GameItem dispenser, GameGridInventory storage)
+		{
+			// A dispenser with Auto Blend off is the player's to start.
+			if (!MachineFeedDispenser.IsAutoBlendOn(dispenser) || Drag.GaveUpOn(storage))
 			{
-				return null;
+				return false;
 			}
-			return MachineFeedDispenser.GetStorageGrid(dispenser);
+			// Food added a moment ago, still waiting for the game's end-of-frame blend. The
+			// game's hoppers make room the same way.
+			if (MachineFeedDispenser.FlushPendingAutoBlend(storage))
+			{
+				return true;
+			}
+			int before = storage.childItems.Count;
+			if (before > 0)
+			{
+				MachineFeedDispenser.Blend(dispenser, storage);
+				if (storage.childItems.Count < before)
+				{
+					return true;
+				}
+			}
+			// Still full, so the dispenser is at its limit: no point asking again for every
+			// item of this drop.
+			Drag.GiveUpOn(storage);
+			return false;
 		}
 	}
 
@@ -72,6 +103,9 @@ namespace DragToFeed
 		private static int running;
 
 		private static int dropping;
+
+		// Dispenser storages found full, blend included, during the drop in progress.
+		private static readonly System.Collections.Generic.HashSet<GameGridInventory> full = new System.Collections.Generic.HashSet<GameGridInventory>();
 
 		public static bool Running => running > 0;
 
@@ -96,12 +130,27 @@ namespace DragToFeed
 			{
 				dropping--;
 			}
+			if (dropping == 0)
+			{
+				full.Clear();
+			}
+		}
+
+		public static bool GaveUpOn(GameGridInventory storage)
+		{
+			return full.Contains(storage);
+		}
+
+		public static void GiveUpOn(GameGridInventory storage)
+		{
+			full.Add(storage);
 		}
 
 		public static void Reset()
 		{
 			running = 0;
 			dropping = 0;
+			full.Clear();
 		}
 	}
 
@@ -190,7 +239,8 @@ namespace DragToFeed
 			{
 				return;
 			}
-			GameGridInventory storage = Feed.DispenserStorageIn(__instance);
+			GameItem dispenser = Feed.DispenserIn(__instance);
+			GameGridInventory storage = (dispenser != null) ? MachineFeedDispenser.GetStorageGrid(dispenser) : null;
 			if (storage != null)
 			{
 				__result = storage.MayHaveValidInventorySlot(item);
@@ -210,16 +260,15 @@ namespace DragToFeed
 			{
 				return true;
 			}
-			GameGridInventory storage = Feed.DispenserStorageIn(__instance);
+			GameItem dispenser = Feed.DispenserIn(__instance);
+			GameGridInventory storage = (dispenser != null) ? MachineFeedDispenser.GetStorageGrid(dispenser) : null;
 			if (storage == null || item.parentInventory == storage)
 			{
 				return true;
 			}
 			SlotMarker slot = storage.TryFindOneValidInventorySlot(item);
-			if ((slot == null || slot.numTransfer < 1) && Drag.Dropping && MachineFeedDispenser.FlushPendingAutoBlend(storage))
+			if ((slot == null || slot.numTransfer < 1) && Drag.Dropping && Feed.MakeRoom(dispenser, storage))
 			{
-				// With Auto Blend on, the food added a moment ago is still waiting for the
-				// game's end-of-frame blend. The game's hoppers make room the same way.
 				slot = storage.TryFindOneValidInventorySlot(item);
 			}
 			__result = slot;

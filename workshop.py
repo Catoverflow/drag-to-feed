@@ -9,6 +9,7 @@ most Linux games on Steam ship (one is picked from the Steam library; STEAM_API_
     ./workshop.py "what changed"           build and upload; a new item starts hidden
     ./workshop.py --public "what changed"  same, and make the item public
     ./workshop.py --tags-only              only set the tags of the existing item
+    ./workshop.py --content-only "note"    only the mod's files; preview, tags and text stay as on Steam
 
 The first upload creates the item and stores its id in workshop_id; later runs update it.
 Title and description are sent when the item is created, and afterwards only with --text, so
@@ -230,6 +231,8 @@ def main():
     parser.add_argument("--check", action="store_true", help="connect to Steam and stop; nothing is uploaded")
     parser.add_argument("--tags-only", action="store_true", help="only set the tags of the existing item")
     parser.add_argument("--text", action="store_true", help="also send the title and description")
+    parser.add_argument("--content-only", action="store_true",
+                        help="send only the mod's files and the change note; leave the preview, tags, text and visibility as they are on Steam")
     group = parser.add_mutually_exclusive_group()
     for name in VISIBILITY:
         group.add_argument("--" + name, dest="visibility", action="store_const", const=name)
@@ -239,6 +242,8 @@ def main():
     declare(lib)
     print("Steam API library: " + path)
     item = read_id()
+    if args.content_only and (not item or args.tags_only or args.text or args.visibility):
+        fail("--content-only updates an existing item and takes no other option")
     if args.tags_only and not item:
         fail("--tags-only needs an existing item; put its id in " + ID_FILE)
     if not args.check and not args.tags_only:
@@ -274,6 +279,13 @@ def main():
         def submit():
             handle = lib.SteamAPI_ISteamUGC_StartItemUpdate(ugc, APP_ID, item)
             sent = []
+            if args.content_only:
+                lib.SteamAPI_ISteamUGC_SetItemContent(ugc, handle, CONTENT.encode("utf-8"))
+                print("Uploading: content only")
+                call = lib.SteamAPI_ISteamUGC_SubmitItemUpdate(ugc, handle, args.note.encode("utf-8"))
+                return wait(lib, utils, call, SubmitItemUpdateResult(), SUBMIT_ITEM_UPDATE_RESULT,
+                            lambda: UPDATE_STATUS.get(lib.SteamAPI_ISteamUGC_GetItemUpdateProgress(
+                                ugc, handle, ctypes.byref(ctypes.c_uint64(0)), ctypes.byref(ctypes.c_uint64(0)))))
             if not args.tags_only:
                 if created or args.text:
                     lib.SteamAPI_ISteamUGC_SetItemTitle(ugc, handle, TITLE.encode("utf-8"))
