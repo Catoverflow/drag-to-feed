@@ -3,7 +3,7 @@
   <ID>drag_to_feed</ID>
   <Name>Drag to Feed</Name>
   <Author>catoverflow</Author>
-  <ModVersion>1.0.1</ModVersion>
+  <ModVersion>1.0.2</ModVersion>
   <Description>Drag food onto an animal cage or aquaculture system to put it in the feed dispenser inside. Remember to right click a dispenser to enable Auto Blend.</Description>
 
   <!-- 0.46D is what the release build calls itself; 1.0.0 is the beta branch. -->

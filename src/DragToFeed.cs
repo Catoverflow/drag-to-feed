@@ -35,10 +35,12 @@ namespace DragToFeed
 	internal static class Feed
 	{
 		// What a dispenser turns into feed directly. Its storage also takes animals and fish, but
-		// those dropped on a cage or a tank are meant to live there.
+		// those dropped on a cage or a tank are meant to live there. So is roe, fertilized or
+		// not, which the game counts as food and not as a fish. Fish meat is ordinary food.
 		public static bool IsFood(GameItem item)
 		{
-			return item != null && item.IsTag("CALORIE_VALUE_TAG") && !item.IsTag("ANIMAL_ITEM_TAG") && !AquacultureHelper.IsFish(item);
+			return item != null && item.IsTag("CALORIE_VALUE_TAG") && !item.IsTag("ANIMAL_ITEM_TAG")
+				&& !AquacultureHelper.IsFish(item) && !item.IsTag("FISH_ROE_TAG");
 		}
 
 		// The feed dispenser slotted in an animal cage or an aquaculture system.
